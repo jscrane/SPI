@@ -14,7 +14,7 @@
 SPIClass SPI;
 
 #if defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-// see http://www.gammon.com.au/forum/?id=10892
+// see http://gammon.com.au/spi
 #	define DI   0  // D0, pin 5  Data In
 #	define DO   1  // D1, pin 6  Data Out (this is *not* MOSI)
 #	define USCK 2  // D2, pin 7  Universal Serial Interface clock
@@ -30,16 +30,7 @@ SPIClass SPI;
 
 void SPIClass::begin() {
 
-#if defined(HAVE_USI)
-
-  pinMode(USCK, OUTPUT);
-  pinMode(DO, OUTPUT);
-  pinMode(SS, OUTPUT);
-  pinMode(DI, INPUT);
-  digitalWrite(SS, HIGH);
-  USICR = _BV(USIWM0);
-
-#elif defined(HAVE_SPI)
+#if defined(SPCR)
 
   // Set SS to high so a connected chip will be "deselected" by default
   digitalWrite(SS, HIGH);
@@ -64,33 +55,40 @@ void SPIClass::begin() {
   pinMode(SCK, OUTPUT);
   pinMode(MOSI, OUTPUT);
 
+#else
+
+  digitalWrite(SS, HIGH);
+  pinMode(USCK, OUTPUT);
+  pinMode(DO, OUTPUT);
+  pinMode(SS, OUTPUT);
+  pinMode(DI, INPUT);
+  USICR = _BV(USIWM0);
+
 #endif
 }
 
 byte SPIClass::transfer(byte b) {
-#if defined(HAVE_USI)
-
-  digitalWrite(SS, LOW);
-  USIDR = b;
-  USISR = _BV(USIOIF);
-  do
-    USICR = _BV(USIWM0) | _BV(USICS1) | _BV(USITC);
-  while ((USISR & _BV(USIOIF)) == 0);
-  digitalWrite(SS, HIGH);
-  return USIDR;
-
-#elif defined(HAVE_SPI)
+#if defined(SPCR)
 
   SPDR = b;
   while (!(SPSR & _BV(SPIF)))
     ;
   return SPDR;
 
+#else
+
+  USIDR = b;
+  USISR = _BV(USIOIF);
+  do
+    USICR = _BV(USIWM0) | _BV(USICS1) | _BV(USICLK) | _BV(USITC);
+  while ((USISR & _BV(USIOIF)) == 0);
+  return USIDR;
+
 #endif
 }
 
 void SPIClass::end() {
-#if defined(HAVE_SPI)
+#if defined(SPCR)
 
   SPCR &= ~_BV(SPE);
 
@@ -99,7 +97,7 @@ void SPIClass::end() {
 
 void SPIClass::setBitOrder(uint8_t bitOrder)
 {
-#if defined(HAVE_SPI)
+#if defined(SPCR)
 
   if(bitOrder == LSBFIRST) {
     SPCR |= _BV(DORD);
@@ -112,7 +110,7 @@ void SPIClass::setBitOrder(uint8_t bitOrder)
 
 void SPIClass::setDataMode(uint8_t mode)
 {
-#if defined(HAVE_SPI)
+#if defined(SPCR)
 
   SPCR = (SPCR & ~SPI_MODE_MASK) | mode;
 
@@ -121,7 +119,7 @@ void SPIClass::setDataMode(uint8_t mode)
 
 void SPIClass::setClockDivider(uint8_t rate)
 {
-#if defined(HAVE_SPI)
+#if defined(SPCR)
 
   SPCR = (SPCR & ~SPI_CLOCK_MASK) | (rate & SPI_CLOCK_MASK);
   SPSR = (SPSR & ~SPI_2XCLOCK_MASK) | ((rate >> 2) & SPI_2XCLOCK_MASK);

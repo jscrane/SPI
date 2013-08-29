@@ -52,20 +52,14 @@ public:
 
 extern SPIClass SPI;
 
-#if !defined(__AVR_ATtiny25__) && !defined(__AVR_ATtiny45__) && !defined(__AVR_ATtiny85__) && !defined(__AVR_ATtiny24__) && !defined(__AVR_ATtiny44__) && !defined(__AVR_ATtiny84__)
-#  define HAVE_SPI
-#else
-#  define HAVE_USI
-#endif
-
 void SPIClass::attachInterrupt() {
-#ifdef HAVE_SPI
+#ifdef SPCR
   SPCR |= _BV(SPIE);
 #endif
 }
 
 void SPIClass::detachInterrupt() {
-#ifdef HAVE_SPI
+#ifdef SPCR
   SPCR &= ~_BV(SPIE);
 #endif
 }
